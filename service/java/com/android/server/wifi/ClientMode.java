@@ -20,6 +20,7 @@ import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.net.DhcpResultsParcelable;
+import android.net.MacAddress;
 import android.net.Network;
 import android.net.wifi.IWifiConnectedNetworkScorer;
 import android.net.wifi.WifiAnnotations;
@@ -298,4 +299,11 @@ public interface ClientMode {
      * update the capabilities
      */
     void updateCapabilities();
+
+    /**
+     * Check if BSSID belongs to any of the affiliated link BSSID's.
+     * @param bssid BSSID of the AP
+     * @return true if BSSID matches to one of the affiliated link BSSIDs, false otherwise.
+     */
+    boolean isAffiliatedLinkBssid(MacAddress bssid);
 }

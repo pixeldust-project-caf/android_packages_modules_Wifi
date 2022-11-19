@@ -18,6 +18,7 @@ package com.android.server.wifi;
 
 import android.annotation.NonNull;
 import android.net.DhcpResultsParcelable;
+import android.net.MacAddress;
 import android.net.Network;
 import android.net.wifi.IWifiConnectedNetworkScorer;
 import android.net.wifi.WifiConfiguration;
@@ -227,4 +228,9 @@ public interface ClientModeDefaults extends ClientMode {
 
     @Override
     default void updateCapabilities() { }
+
+    @Override
+    default boolean isAffiliatedLinkBssid(MacAddress bssid) {
+        return false;
+    }
 }

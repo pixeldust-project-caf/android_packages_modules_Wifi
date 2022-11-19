@@ -2878,7 +2878,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         if (mIpClient != null) {
             Pair<String, String> p = mWifiScoreCard.getL2KeyAndGroupHint(mWifiInfo);
             if (!p.equals(mLastL2KeyAndGroupHint)) {
-                final MacAddress currentBssid = getMacAddressFromBssidString(mWifiInfo.getBSSID());
+                final MacAddress currentBssid =
+                        NativeUtil.getMacAddressOrNull(mWifiInfo.getBSSID());
                 final Layer2Information l2Information = new Layer2Information(
                         p.first, p.second, currentBssid);
                 // Update current BSSID on IpClient side whenever l2Key and groupHint
@@ -3584,7 +3585,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             return;
         }
         String currentMacString = mWifiNative.getMacAddress(mInterfaceName);
-        MacAddress currentMac = getMacAddressFromBssidString(currentMacString);
+        MacAddress currentMac = NativeUtil.getMacAddressOrNull(currentMacString);
         MacAddress newMac = isSecondaryInternet() && mClientModeManager.isSecondaryInternetDbsAp()
                 ? MacAddressUtils.createRandomUnicastAddress()
                 : mWifiConfigManager.getRandomizedMacAndUpdateIfNeeded(config);
@@ -3829,17 +3830,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         return scanDetailCache.getScanResult(bssid);
     }
 
-    private MacAddress getMacAddressFromBssidString(@Nullable String bssidStr) {
-        try {
-            return (bssidStr != null) ? MacAddress.fromString(bssidStr) : null;
-        } catch (IllegalArgumentException e) {
-            Log.e(getTag(), "Invalid BSSID format: " + bssidStr);
-            return null;
-        }
-    }
-
     private MacAddress getCurrentBssidInternalMacAddress() {
-        return getMacAddressFromBssidString(mLastBssid);
+        return NativeUtil.getMacAddressOrNull(mLastBssid);
     }
 
     private void connectToNetwork(WifiConfiguration config) {
@@ -4570,6 +4562,22 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     public void updateCapabilities() {
         updateCapabilities(getConnectedWifiConfigurationInternal());
     }
+
+    /**
+     * Check if BSSID belongs to any of the affiliated link BSSID's.
+     * @param bssid BSSID of the AP.
+     * @return true if BSSID matches to one of the affiliated link BSSIDs, false otherwise.
+     */
+    public boolean isAffiliatedLinkBssid(@NonNull MacAddress bssid) {
+        List<MloLink> links = mWifiInfo.getAffiliatedMloLinks();
+        for (MloLink link: links) {
+            if (link.getApMacAddress().equals(bssid)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 
     private void updateCapabilities(WifiConfiguration currentWifiConfiguration) {
         updateCapabilities(getCapabilities(currentWifiConfiguration, getConnectedBssidInternal()));
