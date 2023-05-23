@@ -1166,10 +1166,10 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
         @Override
         public void onNetworkUpdated(WifiConfiguration newConfig, WifiConfiguration oldConfig) {
-            // Clear invalid cached data.
-            mWifiNative.removeNetworkCachedData(oldConfig.networkId);
 
             if (WifiConfigurationUtil.hasCredentialChanged(oldConfig, newConfig)) {
+                // Clear invalid cached data.
+                mWifiNative.removeNetworkCachedData(oldConfig.networkId);
                 mWifiBlocklistMonitor.handleNetworkRemoved(newConfig.SSID);
             }
 
@@ -3433,6 +3433,12 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 // roaming. The linked network roaming reset the mLastNetworkId which results in
                 // the connected configuration to be null.
                 config = getConnectingWifiConfigurationInternal();
+            }
+            if (config == null) {
+                // config could be null if it had been removed from WifiConfigManager. In this case
+                // we should simply disconnect.
+                handleIpReachabilityLost();
+                return;
             }
             final NetworkAgentConfig naConfig = getNetworkAgentConfigInternal(config);
             final NetworkCapabilities nc = getCapabilities(

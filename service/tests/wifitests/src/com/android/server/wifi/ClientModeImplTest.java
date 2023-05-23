@@ -6261,12 +6261,13 @@ public class ClientModeImplTest extends WifiBaseTest {
     }
 
     /**
-     * Verify that network cached data is cleared on updating a network.
+     * Verify that network cached data is cleared on changing the credential. 
      */
     @Test
-    public void testNetworkCachedDataIsClearedOnUpdatingNetwork() throws Exception {
+    public void testNetworkCachedDataIsClearedOnChangingTheCredential() throws Exception {
+        mConnectedNetwork = spy(WifiConfigurationTestUtil.createPasspointNetwork());
         WifiConfiguration oldConfig = new WifiConfiguration(mConnectedNetwork);
-        mConnectedNetwork.meteredOverride = METERED_OVERRIDE_METERED;
+        mConnectedNetwork.enterpriseConfig.setPassword("fakePassword");
 
         mConfigUpdateListenerCaptor.getValue().onNetworkUpdated(mConnectedNetwork, oldConfig);
         mLooper.dispatchAll();
@@ -6379,6 +6380,24 @@ public class ClientModeImplTest extends WifiBaseTest {
         // Trigger ip reachability failure and ensure we trigger a disconnect.
         ReachabilityLossInfoParcelable lossInfo =
                 new ReachabilityLossInfoParcelable("", ReachabilityLossReason.ORGANIC);
+        mCmi.sendMessage(ClientModeImpl.CMD_IP_REACHABILITY_FAILURE, lossInfo);
+        mLooper.dispatchAll();
+        verify(mWifiNative).disconnect(WIFI_IFACE_NAME);
+    }
+
+    @Test
+    public void testIpReachabilityFailureRoamWithNullConfigDisconnect() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        connect();
+        expectRegisterNetworkAgent((agentConfig) -> { }, (cap) -> { });
+        reset(mWifiNetworkAgent);
+
+        // mock the current network as removed
+        when(mWifiConfigManager.getConfiguredNetwork(anyInt())).thenReturn(null);
+
+        // Trigger ip reachability failure and ensure we disconnect.
+        ReachabilityLossInfoParcelable lossInfo =
+                new ReachabilityLossInfoParcelable("", ReachabilityLossReason.ROAM);
         mCmi.sendMessage(ClientModeImpl.CMD_IP_REACHABILITY_FAILURE, lossInfo);
         mLooper.dispatchAll();
         verify(mWifiNative).disconnect(WIFI_IFACE_NAME);
