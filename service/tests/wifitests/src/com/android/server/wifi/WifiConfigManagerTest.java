@@ -45,6 +45,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.withSettings;
 
+import android.Manifest;
 import android.annotation.Nullable;
 import android.app.ActivityManager;
 import android.app.test.MockAnswerUtil.AnswerWithArguments;
@@ -7666,21 +7667,71 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                 .getConfiguredNetwork(openNetId).creatorName);
     }
 
+    /**
+     * Verify that if the caller has NETWORK_SETTINGS permission, and the overlay
+     * config_wifiAllowInsecureEnterpriseConfigurationsForSettingsAndSUW is set, then it can add an
+     * insecure Enterprise network, with Root CA certificate not set and/or domain name not set.
+     */
     @Test
-    public void testAddNetworkWithHexadecimalSsid() {
-        WifiConfiguration openNetwork = WifiConfigurationTestUtil.createOpenNetwork();
-        openNetwork.SSID = "aBcDeF";
-        List<WifiConfiguration> networks = new ArrayList<>();
-        networks.add(openNetwork);
+    public void testAddInsecureEnterpriseNetworkWithNetworkSettingsPerm() throws Exception {
+        when(mContext.checkPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
+                anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_GRANTED);
+        when(mContext.checkPermission(eq(Manifest.permission.NETWORK_SETUP_WIZARD),
+                anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_DENIED);
 
-        verifyAddNetworkToWifiConfigManager(openNetwork);
+        // First set flag to not allow
+        when(mWifiGlobals.isInsecureEnterpriseConfigurationAllowed()).thenReturn(false);
 
-        List<WifiConfiguration> retrievedNetworks =
-                mWifiConfigManager.getConfiguredNetworksWithPasswords();
-        // Verify the profile keys are the same
-        WifiConfigurationTestUtil.assertConfigurationsEqualForConfigManagerAddOrUpdate(
-                networks, retrievedNetworks);
-        // Verify the retrieved SSID is all lowercase.
-        assertEquals(retrievedNetworks.get(0).SSID, "abcdef");
+        // Create an insecure Enterprise network
+        WifiConfiguration config = WifiConfigurationTestUtil.createEapNetwork();
+        config.enterpriseConfig.setCaPath(null);
+        config.enterpriseConfig.setDomainSuffixMatch(null);
+        assertFalse(config.enterpriseConfig.isUserApproveNoCaCert());
+
+        // Verify operation fails
+        NetworkUpdateResult result = addNetworkToWifiConfigManager(config);
+        assertFalse(result.isSuccess());
+
+        // Set flag to allow
+        when(mWifiGlobals.isInsecureEnterpriseConfigurationAllowed()).thenReturn(true);
+
+        // Verify operation succeeds
+        NetworkUpdateResult res = addNetworkToWifiConfigManager(config);
+        assertTrue(res.isSuccess());
+        config = mWifiConfigManager.getConfiguredNetwork(res.getNetworkId());
+        assertNotNull(config);
+        assertTrue(config.enterpriseConfig.isUserApproveNoCaCert());
+    }
+
+    /**
+     * Verify that if the caller does NOT have NETWORK_SETTINGS permission, then it cannot add an
+     * insecure Enterprise network, with Root CA certificate not set and/or domain name not set,
+     * regardless of the overlay config_wifiAllowInsecureEnterpriseConfigurationsForSettingsAndSUW
+     * value.
+     */
+    @Test
+    public void testAddInsecureEnterpriseNetworkWithNoNetworkSettingsPerm() throws Exception {
+        when(mContext.checkPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
+                anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_DENIED);
+        when(mContext.checkPermission(eq(Manifest.permission.NETWORK_SETUP_WIZARD),
+                anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_DENIED);
+
+        // First set flag to not allow
+        when(mWifiGlobals.isInsecureEnterpriseConfigurationAllowed()).thenReturn(false);
+
+        // Create an insecure Enterprise network
+        WifiConfiguration config = WifiConfigurationTestUtil.createEapNetwork();
+        config.enterpriseConfig.setCaPath(null);
+        config.enterpriseConfig.setDomainSuffixMatch(null);
+
+        // Verify operation fails
+        NetworkUpdateResult result = addNetworkToWifiConfigManager(config);
+        assertFalse(result.isSuccess());
+
+        // Set flag to allow
+        when(mWifiGlobals.isInsecureEnterpriseConfigurationAllowed()).thenReturn(true);
+
+        // Verify operation still fails
+        assertFalse(addNetworkToWifiConfigManager(config).isSuccess());
     }
 }
