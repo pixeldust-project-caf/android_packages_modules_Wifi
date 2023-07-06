@@ -7667,6 +7667,24 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                 .getConfiguredNetwork(openNetId).creatorName);
     }
 
+    @Test
+    public void testAddNetworkWithHexadecimalSsid() {
+        WifiConfiguration openNetwork = WifiConfigurationTestUtil.createOpenNetwork();
+        openNetwork.SSID = "aBcDeF";
+        List<WifiConfiguration> networks = new ArrayList<>();
+        networks.add(openNetwork);
+
+        verifyAddNetworkToWifiConfigManager(openNetwork);
+
+        List<WifiConfiguration> retrievedNetworks =
+                mWifiConfigManager.getConfiguredNetworksWithPasswords();
+        // Verify the profile keys are the same
+        WifiConfigurationTestUtil.assertConfigurationsEqualForConfigManagerAddOrUpdate(
+                networks, retrievedNetworks);
+        // Verify the retrieved SSID is all lowercase.
+        assertEquals(retrievedNetworks.get(0).SSID, "abcdef");
+    }
+
     /**
      * Verify that if the caller has NETWORK_SETTINGS permission, and the overlay
      * config_wifiAllowInsecureEnterpriseConfigurationsForSettingsAndSUW is set, then it can add an
