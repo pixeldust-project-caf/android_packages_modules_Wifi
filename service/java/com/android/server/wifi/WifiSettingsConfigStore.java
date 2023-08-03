@@ -121,9 +121,28 @@ public class WifiSettingsConfigStore {
             new Key<>("wifi_native_supported_features", 0L);
 
     /**
+     * Store the supported features retrieved from WiFi HAL and Supplicant HAL
+     */
+    public static final Key<Integer> WIFI_NATIVE_SUPPORTED_STA_BANDS =
+            new Key<>("wifi_native_supported_sta_bands", 0);
+
+    /**
      * Store the static chip info retrieved from WiFi HAL
      */
     public static final Key<String> WIFI_STATIC_CHIP_INFO = new Key<>("wifi_static_chip_info", "");
+
+    /**
+     * Store the last country code used by Soft AP.
+     */
+    public static final Key<String> WIFI_SOFT_AP_COUNTRY_CODE =
+            new Key<>("wifi_last_country_code", "");
+
+    /**
+     * Store the available channel frequencies in a JSON array for Soft AP for the last country
+     * code used.
+     */
+    public static final Key<String> WIFI_AVAILABLE_SOFT_AP_FREQS_MHZ =
+            new Key<>("wifi_available_soft_ap_freqs_mhz", "[]");
 
     /******** Wifi shared pref keys ***************/
 

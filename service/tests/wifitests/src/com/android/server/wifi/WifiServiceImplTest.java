@@ -20,7 +20,10 @@ import static android.Manifest.permission.ACCESS_WIFI_STATE;
 import static android.Manifest.permission.MANAGE_WIFI_COUNTRY_CODE;
 import static android.Manifest.permission.WIFI_ACCESS_COEX_UNSAFE_CHANNELS;
 import static android.Manifest.permission.WIFI_UPDATE_COEX_UNSAFE_CHANNELS;
+import static android.net.wifi.ScanResult.WIFI_BAND_60_GHZ;
+import static android.net.wifi.ScanResult.WIFI_BAND_6_GHZ;
 import static android.net.wifi.WifiAvailableChannel.FILTER_REGULATORY;
+import static android.net.wifi.WifiAvailableChannel.OP_MODE_SAP;
 import static android.net.wifi.WifiAvailableChannel.OP_MODE_STA;
 import static android.net.wifi.WifiConfiguration.METERED_OVERRIDE_METERED;
 import static android.net.wifi.WifiManager.ACTION_REMOVE_SUGGESTION_DISCONNECT;
@@ -45,6 +48,7 @@ import static android.net.wifi.WifiManager.WIFI_AP_STATE_DISABLING;
 import static android.net.wifi.WifiManager.WIFI_AP_STATE_ENABLED;
 import static android.net.wifi.WifiManager.WIFI_AP_STATE_FAILED;
 import static android.net.wifi.WifiManager.WIFI_STATE_DISABLED;
+import static android.net.wifi.WifiScanner.WIFI_BAND_24_5_WITH_DFS_6_60_GHZ;
 import static android.net.wifi.WifiScanner.WIFI_BAND_24_GHZ;
 import static android.net.wifi.WifiScanner.WIFI_BAND_5_GHZ;
 
@@ -2085,10 +2089,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
     @Test
     public void testIsWifiBandSupported24gWithOverride() throws Exception {
         when(mResources.getBoolean(R.bool.config_wifi24ghzSupport)).thenReturn(true);
-        mLooper.startAutoDispatch();
         assertTrue(mWifiServiceImpl.is24GHzBandSupported());
-        mLooper.stopAutoDispatchAndIgnoreExceptions();
-        verify(mWifiNative, never()).getChannelsForBand(anyInt());
+        verify(mActiveModeWarden, never()).isBandSupportedForSta(anyInt());
     }
 
     /**
@@ -2097,10 +2099,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
     @Test
     public void testIsWifiBandSupported5gWithOverride() throws Exception {
         when(mResources.getBoolean(R.bool.config_wifi5ghzSupport)).thenReturn(true);
-        mLooper.startAutoDispatch();
         assertTrue(mWifiServiceImpl.is5GHzBandSupported());
-        mLooper.stopAutoDispatchAndIgnoreExceptions();
-        verify(mWifiNative, never()).getChannelsForBand(anyInt());
+        verify(mActiveModeWarden, never()).isBandSupportedForSta(anyInt());
     }
 
     /**
@@ -2109,10 +2109,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
     @Test
     public void testIsWifiBandSupported6gWithOverride() throws Exception {
         when(mResources.getBoolean(R.bool.config_wifi6ghzSupport)).thenReturn(true);
-        mLooper.startAutoDispatch();
         assertTrue(mWifiServiceImpl.is6GHzBandSupported());
-        mLooper.stopAutoDispatchAndIgnoreExceptions();
-        verify(mWifiNative, never()).getChannelsForBand(anyInt());
+        verify(mActiveModeWarden, never()).isBandSupportedForSta(anyInt());
     }
 
     /**
@@ -2120,13 +2118,10 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testIsWifiBandSupported24gNoOverrideNoChannels() throws Exception {
-        final int[] emptyArray = {};
         when(mResources.getBoolean(R.bool.config_wifi24ghzSupport)).thenReturn(false);
-        when(mWifiNative.getChannelsForBand(anyInt())).thenReturn(emptyArray);
-        mLooper.startAutoDispatch();
+        when(mActiveModeWarden.isBandSupportedForSta(WIFI_BAND_24_GHZ)).thenReturn(false);
         assertFalse(mWifiServiceImpl.is24GHzBandSupported());
-        mLooper.stopAutoDispatch();
-        verify(mWifiNative).getChannelsForBand(WifiScanner.WIFI_BAND_24_GHZ);
+        verify(mActiveModeWarden).isBandSupportedForSta(WifiScanner.WIFI_BAND_24_GHZ);
     }
 
     /**
@@ -2134,13 +2129,10 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testIsWifiBandSupported5gNoOverrideNoChannels() throws Exception {
-        final int[] emptyArray = {};
         when(mResources.getBoolean(R.bool.config_wifi5ghzSupport)).thenReturn(false);
-        when(mWifiNative.getChannelsForBand(anyInt())).thenReturn(emptyArray);
-        mLooper.startAutoDispatch();
+        when(mActiveModeWarden.isBandSupportedForSta(WIFI_BAND_5_GHZ)).thenReturn(false);
         assertFalse(mWifiServiceImpl.is5GHzBandSupported());
-        mLooper.stopAutoDispatch();
-        verify(mWifiNative).getChannelsForBand(WifiScanner.WIFI_BAND_5_GHZ);
+        verify(mActiveModeWarden).isBandSupportedForSta(WifiScanner.WIFI_BAND_5_GHZ);
     }
 
     /**
@@ -2148,13 +2140,10 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testIsWifiBandSupported24gNoOverrideWithChannels() throws Exception {
-        final int[] channelArray = {2412};
         when(mResources.getBoolean(R.bool.config_wifi24ghzSupport)).thenReturn(false);
-        when(mWifiNative.getChannelsForBand(anyInt())).thenReturn(channelArray);
-        mLooper.startAutoDispatch();
+        when(mActiveModeWarden.isBandSupportedForSta(WIFI_BAND_24_GHZ)).thenReturn(true);
         assertTrue(mWifiServiceImpl.is24GHzBandSupported());
-        mLooper.stopAutoDispatch();
-        verify(mWifiNative).getChannelsForBand(WifiScanner.WIFI_BAND_24_GHZ);
+        verify(mActiveModeWarden).isBandSupportedForSta(WifiScanner.WIFI_BAND_24_GHZ);
     }
 
     /**
@@ -2162,13 +2151,10 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testIsWifiBandSupported5gNoOverrideWithChannels() throws Exception {
-        final int[] channelArray = {5170};
         when(mResources.getBoolean(R.bool.config_wifi5ghzSupport)).thenReturn(false);
-        when(mWifiNative.getChannelsForBand(anyInt())).thenReturn(channelArray);
-        mLooper.startAutoDispatch();
+        when(mActiveModeWarden.isBandSupportedForSta(WIFI_BAND_5_GHZ)).thenReturn(true);
         assertTrue(mWifiServiceImpl.is5GHzBandSupported());
-        mLooper.stopAutoDispatch();
-        verify(mWifiNative).getChannelsForBand(WifiScanner.WIFI_BAND_5_GHZ);
+        verify(mActiveModeWarden).isBandSupportedForSta(WifiScanner.WIFI_BAND_5_GHZ);
     }
 
     /**
@@ -2176,13 +2162,11 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testIsWifiBandSupported6gNoOverrideNoChannels() throws Exception {
-        final int[] emptyArray = {};
         when(mResources.getBoolean(R.bool.config_wifi6ghzSupport)).thenReturn(false);
-        when(mWifiNative.getChannelsForBand(anyInt())).thenReturn(emptyArray);
-        mLooper.startAutoDispatch();
+        when(mActiveModeWarden.isBandSupportedForSta(WifiScanner.WIFI_BAND_6_GHZ)).thenReturn(
+                false);
         assertFalse(mWifiServiceImpl.is6GHzBandSupported());
-        mLooper.stopAutoDispatch();
-        verify(mWifiNative).getChannelsForBand(WifiScanner.WIFI_BAND_6_GHZ);
+        verify(mActiveModeWarden).isBandSupportedForSta(WifiScanner.WIFI_BAND_6_GHZ);
     }
 
     /**
@@ -2190,13 +2174,11 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testIsWifiBandSupported6gNoOverrideWithChannels() throws Exception {
-        final int[] channelArray = {6420};
         when(mResources.getBoolean(R.bool.config_wifi6ghzSupport)).thenReturn(false);
-        when(mWifiNative.getChannelsForBand(anyInt())).thenReturn(channelArray);
-        mLooper.startAutoDispatch();
+        when(mActiveModeWarden.isBandSupportedForSta(WifiScanner.WIFI_BAND_6_GHZ)).thenReturn(
+                true);
         assertTrue(mWifiServiceImpl.is6GHzBandSupported());
-        mLooper.stopAutoDispatch();
-        verify(mWifiNative).getChannelsForBand(WifiScanner.WIFI_BAND_6_GHZ);
+        verify(mActiveModeWarden).isBandSupportedForSta(WifiScanner.WIFI_BAND_6_GHZ);
     }
 
     private void setup24GhzSupported() {
@@ -2208,8 +2190,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mResources.getBoolean(R.bool.config_wifiSoftap24ghzSupported)).thenReturn(false);
         if (!isOnlyUnsupportedSoftAp) {
             when(mResources.getBoolean(R.bool.config_wifi24ghzSupport)).thenReturn(false);
-            when(mWifiNative.getChannelsForBand(WifiScanner.WIFI_BAND_24_GHZ))
-                    .thenReturn(new int[0]);
+            when(mActiveModeWarden.isBandSupportedForSta(WifiScanner.WIFI_BAND_24_GHZ))
+                    .thenReturn(false);
         }
     }
 
@@ -2222,8 +2204,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mResources.getBoolean(R.bool.config_wifiSoftap5ghzSupported)).thenReturn(false);
         if (!isOnlyUnsupportedSoftAp) {
             when(mResources.getBoolean(R.bool.config_wifi5ghzSupport)).thenReturn(false);
-            when(mWifiNative.getChannelsForBand(WifiScanner.WIFI_BAND_5_GHZ))
-                    .thenReturn(new int[0]);
+            when(mActiveModeWarden.isBandSupportedForSta(WifiScanner.WIFI_BAND_5_GHZ))
+                    .thenReturn(false);
         }
     }
 
@@ -2236,8 +2218,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mResources.getBoolean(R.bool.config_wifiSoftap6ghzSupported)).thenReturn(false);
         if (!isOnlyUnsupportedSoftAp) {
             when(mResources.getBoolean(R.bool.config_wifi6ghzSupport)).thenReturn(false);
-            when(mWifiNative.getChannelsForBand(WifiScanner.WIFI_BAND_6_GHZ))
-                    .thenReturn(new int[0]);
+            when(mActiveModeWarden.isBandSupportedForSta(WifiScanner.WIFI_BAND_6_GHZ))
+                    .thenReturn(false);
         }
     }
 
@@ -2250,8 +2232,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mResources.getBoolean(R.bool.config_wifiSoftap60ghzSupported)).thenReturn(false);
         if (!isOnlyUnsupportedSoftAp) {
             when(mResources.getBoolean(R.bool.config_wifi60ghzSupport)).thenReturn(false);
-            when(mWifiNative.getChannelsForBand(WifiScanner.WIFI_BAND_60_GHZ))
-                    .thenReturn(new int[0]);
+            when(mActiveModeWarden.isBandSupportedForSta(WifiScanner.WIFI_BAND_60_GHZ))
+                    .thenReturn(false);
         }
     }
 
@@ -9159,6 +9141,80 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mWifiServiceImpl.getUsableChannels(WIFI_BAND_24_GHZ, OP_MODE_STA, FILTER_REGULATORY);
         mLooper.stopAutoDispatch();
         verify(mWifiNative).getUsableChannels(anyInt(), anyInt(), anyInt());
+    }
+
+    /**
+     * Verify the call to getUsableChannels() goes to cached SoftAp capabilities
+     */
+    @Test
+    public void testGetUsableChannelsUsesStoredSoftApChannelsWhenDriverIsntUp() throws Exception {
+        mWifiServiceImpl.handleBootCompleted();
+        mLooper.dispatchAll();
+        when(mWifiPermissionsUtil.isLocationModeEnabled()).thenReturn(true);
+        when(mWifiPermissionsUtil.checkCallersHardwareLocationPermission(anyInt()))
+                .thenReturn(true);
+        when(mWifiNative.isHalSupported()).thenReturn(true);
+        when(mWifiNative.isHalStarted()).thenReturn(false);
+        setup5GhzSupported();
+        setup6GhzSupported();
+        setup60GhzSupported();
+        when(mWifiCountryCode.getCountryCode()).thenReturn(TEST_COUNTRY_CODE);
+
+        // No values stored
+        assertThat(mWifiServiceImpl.getUsableChannels(WIFI_BAND_24_GHZ, OP_MODE_SAP,
+                 FILTER_REGULATORY)).isEmpty();
+
+        // Country code doesn't match
+        when(mWifiSettingsConfigStore.get(WifiSettingsConfigStore.WIFI_SOFT_AP_COUNTRY_CODE))
+                .thenReturn(TEST_COUNTRY_CODE);
+        when(mWifiSettingsConfigStore.get(WifiSettingsConfigStore.WIFI_AVAILABLE_SOFT_AP_FREQS_MHZ))
+                .thenReturn("[2452,5180,5955,58320]");
+        when(mWifiCountryCode.getCountryCode()).thenReturn(TEST_NEW_COUNTRY_CODE);
+        assertThat(mWifiServiceImpl.getUsableChannels(WIFI_BAND_24_GHZ, OP_MODE_SAP,
+                FILTER_REGULATORY)).isEmpty();
+
+        // Matching country code
+        when(mWifiCountryCode.getCountryCode()).thenReturn(TEST_COUNTRY_CODE);
+        assertThat(mWifiServiceImpl.getUsableChannels(WIFI_BAND_24_5_WITH_DFS_6_60_GHZ, OP_MODE_SAP,
+                FILTER_REGULATORY)).containsExactly(
+                new WifiAvailableChannel(2452, WifiAvailableChannel.OP_MODE_SAP),
+                new WifiAvailableChannel(5180, WifiAvailableChannel.OP_MODE_SAP),
+                new WifiAvailableChannel(5955, WifiAvailableChannel.OP_MODE_SAP),
+                new WifiAvailableChannel(58320, WifiAvailableChannel.OP_MODE_SAP));
+    }
+
+    /**
+     * Verify that driver country code updates store the new available Soft AP channels.
+     */
+    @Test
+    public void testDriverCountryCodeChangedStoresAvailableSoftApChannels() throws Exception {
+        mWifiServiceImpl.handleBootCompleted();
+        mLooper.dispatchAll();
+        when(mWifiPermissionsUtil.isLocationModeEnabled()).thenReturn(true);
+        when(mWifiPermissionsUtil.checkCallersHardwareLocationPermission(anyInt()))
+                .thenReturn(true);
+        when(mWifiNative.isHalSupported()).thenReturn(true);
+        when(mWifiNative.isHalStarted()).thenReturn(true);
+        when(mWifiNative.getUsableChannels(eq(WIFI_BAND_24_GHZ), anyInt(), anyInt()))
+                .thenReturn(Arrays.asList(
+                        new WifiAvailableChannel(2452, WifiAvailableChannel.OP_MODE_SAP)));
+        when(mWifiNative.getUsableChannels(eq(WIFI_BAND_5_GHZ), anyInt(), anyInt()))
+                .thenReturn(Arrays.asList(
+                        new WifiAvailableChannel(5180, WifiAvailableChannel.OP_MODE_SAP)));
+        when(mWifiNative.getUsableChannels(eq(WIFI_BAND_6_GHZ), anyInt(), anyInt()))
+                .thenReturn(Arrays.asList(
+                        new WifiAvailableChannel(5955, WifiAvailableChannel.OP_MODE_SAP)));
+        when(mWifiNative.getUsableChannels(eq(WIFI_BAND_60_GHZ), anyInt(), anyInt()))
+                .thenReturn(null);
+
+        mWifiServiceImpl.mCountryCodeTracker.onDriverCountryCodeChanged(TEST_COUNTRY_CODE);
+        mLooper.dispatchAll();
+
+        verify(mWifiSettingsConfigStore).put(
+                eq(WifiSettingsConfigStore.WIFI_SOFT_AP_COUNTRY_CODE), eq(TEST_COUNTRY_CODE));
+        verify(mWifiSettingsConfigStore).put(
+                eq(WifiSettingsConfigStore.WIFI_AVAILABLE_SOFT_AP_FREQS_MHZ),
+                eq("[2452,5180,5955]"));
     }
 
     /**
